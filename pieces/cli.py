@@ -63,10 +63,6 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     try:
-        # new_loop = asyncio.new_event_loop()
-        # asyncio.set_event_loop(new_loop)
-        # new_client = TorrentClient(Torrent(args.torrent), piece_manager)
-        # new_task = new_loop.create_task(new_client.start())
         loop.run_until_complete(task)
     except CancelledError:
         logging.warning('Event loop was canceled')
