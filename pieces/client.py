@@ -46,7 +46,8 @@ class TorrentClient:
     (or worse yet processes) we can create them all at once and they will
     be waiting until there is a peer to consume in the queue.
     """
-    def __init__(self, torrent):
+    def __init__(self, torrent, piece_manager=None):
+        self.torrent = torrent
         self.tracker = Tracker(torrent)
         # The list of potential peers is the work queue, consumed by the
         # PeerConnections
@@ -57,8 +58,12 @@ class TorrentClient:
         self.peers = []
         # The piece manager implements the strategy on which pieces to
         # request, as well as the logic to persist received pieces to disk.
-        self.piece_manager = PieceManager(torrent)
+        if piece_manager:
+            self.piece_manager = piece_manager
+        else:
+            self.piece_manager = PieceManager(torrent)
         self.abort = False
+
 
     async def start(self):
         """
@@ -115,9 +120,15 @@ class TorrentClient:
         """
         self.abort = True
         for peer in self.peers:
-            peer.stop()
-        self.piece_manager.close()
+            peer.cancel()
+        # self.piece_manager.close()
         self.tracker.close()
+
+
+    def resume(self):
+        self.piece_manager.resume()
+        # self.tracker = Tracker(self.torrent)
+        # self.start()
 
     def _on_block_retrieved(self, peer_id, piece_index, block_offset, data):
         """
@@ -296,8 +307,13 @@ class PieceManager:
         """
         Close any resources used by the PieceManager (such as open files)
         """
-        if self.fd:
-            os.close(self.fd)
+        # if self.fd:
+        #     os.close(self.fd)
+        pass
+
+    def resume(self):
+        # self.fd = os.open(self.torrent.output_file,  os.O_RDWR)
+        pass
 
     @property
     def complete(self):
@@ -369,7 +385,7 @@ class PieceManager:
         if not block:
             block = self._next_ongoing(peer_id)
             if not block:
-                block = self._get_rarest_piece(peer_id).next_request()
+                block = self._next_missing(peer_id)
         return block
 
     def block_received(self, peer_id, piece_index, block_offset, data):
@@ -499,3 +515,4 @@ class PieceManager:
         pos = piece.index * self.torrent.piece_length
         os.lseek(self.fd, pos, os.SEEK_SET)
         os.write(self.fd, piece.data)
+
