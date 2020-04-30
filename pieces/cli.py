@@ -20,6 +20,7 @@ import asyncio
 import signal
 import logging
 import time
+import pickle
 
 from concurrent.futures import CancelledError
 
@@ -39,37 +40,33 @@ def main():
         logging.basicConfig(level=logging.DEBUG)
 
     loop = asyncio.get_event_loop()
-    client = TorrentClient(Torrent(args.torrent))
+
+    piece_manager = None
+    try:
+        with open('piece_manager.pickle', 'rb') as f:
+            piece_manager = pickle.load(f)
+    except:
+        pass
+
+    client = TorrentClient(Torrent(args.torrent), piece_manager)
+
     task = loop.create_task(client.start())
 
-    piece_manager=None
     def signal_handler(*_):
-        logging.info('Exiting, please wait until everything is shutdown...')
+        print("Pausing and closing all connections")
+        client.stop()
+        task.cancel()
         piece_manager = client.piece_manager
-        # client.stop()
-        print("Pause")
-        time.sleep(15)
-        # slep()
-        # task.cancel()
-        task.done()
-        loop.stop()
-
-        print("Resuming after 2.4 seconds.")
-        # client.resume()
-        # loop.create_task(client.start())
-        # piece_manager = client.resume()
-        # loop2 = asyncio.new_event_loop()
-        # asyncio.set_event_loop(loop2)
-        # client2 = TorrentClient(Torrent(args.torrent),piece_manager)
-        # task2 = loop2.create_task(client2.start())
+        with open('piece_manager.pickle', 'wb') as f:
+            pickle.dump(piece_manager, f)
 
     signal.signal(signal.SIGINT, signal_handler)
 
     try:
-        loop2 = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop2)
-        client2 = TorrentClient(Torrent(args.torrent), piece_manager)
-        task2 = loop2.create_task(client2.start())
-        loop2.run_until_complete(task2)
+        # new_loop = asyncio.new_event_loop()
+        # asyncio.set_event_loop(new_loop)
+        # new_client = TorrentClient(Torrent(args.torrent), piece_manager)
+        # new_task = new_loop.create_task(new_client.start())
+        loop.run_until_complete(task)
     except CancelledError:
         logging.warning('Event loop was canceled')

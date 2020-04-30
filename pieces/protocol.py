@@ -178,10 +178,7 @@ class PeerConnection:
             self.future.cancel()
         if self.writer:
             self.writer.close()
-        # import aiohttp
-        # session = aiohttp.ClientSession()
-        # session.close()
-        # session.close()
+
         self.queue.task_done()
 
     def stop(self):
@@ -257,7 +254,6 @@ class PeerStreamIterator:
     If the connection is dropped, something fails the iterator will abort by
     raising the `StopAsyncIteration` error ending the calling iteration.
     """
-    # CHUNK_SIZE = 20*1024
     CHUNK_SIZE = 10*1024
 
     def __init__(self, reader, initial: bytes=None):
@@ -282,9 +278,6 @@ class PeerStreamIterator:
                     logging.debug('No data read from stream')
                     if self.buffer:
                         message = self.parse()
-                        # if type(message)==KeepAlive:
-                        #     raise StopAsyncIteration()
-                        # logging.debug('Message in buffer: {}'.format(message))
                         if message:
                             return message
                     raise StopAsyncIteration()

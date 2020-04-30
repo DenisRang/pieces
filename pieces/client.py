@@ -60,10 +60,10 @@ class TorrentClient:
         # request, as well as the logic to persist received pieces to disk.
         if piece_manager:
             self.piece_manager = piece_manager
+            self.piece_manager.fd = os.open(self.torrent.output_file, os.O_RDWR | os.O_CREAT)
         else:
             self.piece_manager = PieceManager(torrent)
         self.abort = False
-
 
     async def start(self):
         """
@@ -120,15 +120,9 @@ class TorrentClient:
         """
         self.abort = True
         for peer in self.peers:
-            peer.cancel()
-        # self.piece_manager.close()
+            peer.stop()
+        self.piece_manager.close()
         self.tracker.close()
-
-
-    def resume(self):
-        self.piece_manager.resume()
-        # self.tracker = Tracker(self.torrent)
-        # self.start()
 
     def _on_block_retrieved(self, peer_id, piece_index, block_offset, data):
         """
@@ -307,13 +301,8 @@ class PieceManager:
         """
         Close any resources used by the PieceManager (such as open files)
         """
-        # if self.fd:
-        #     os.close(self.fd)
-        pass
-
-    def resume(self):
-        # self.fd = os.open(self.torrent.output_file,  os.O_RDWR)
-        pass
+        if self.fd:
+            os.close(self.fd)
 
     @property
     def complete(self):
